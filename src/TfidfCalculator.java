@@ -8,6 +8,8 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 
+import com.google.common.base.Preconditions;
+
 public class TfidfCalculator {
 	// the set of terms in each document
 	private ArrayList<HashSet<String>> termSets = new ArrayList<HashSet<String>>();
@@ -21,8 +23,8 @@ public class TfidfCalculator {
 	private HashMap<String, Integer> numAppearance = new HashMap<String, Integer>();
 	// the data structure for idf (inverse document frequency) of each term
 	private HashMap<String, Double> invDocFreq = new HashMap<String, Double>();
-	// the data structure for tfidf (term frequency * inverse document frequency)
-	// of each document
+	// the data structure for tfidf (term frequency * inverse document
+	// frequency) of each document
 	private ArrayList<HashMap<String, Double>> tfidfs = new ArrayList<HashMap<String, Double>>();
 	// the term and index mapping
 	private ArrayList<String> termIndexMapping = new ArrayList<String>();
@@ -82,14 +84,13 @@ public class TfidfCalculator {
 		}
 		System.out.println("numAppearance: " + numAppearance);
 
-		assert termAndCounts.size() == termCounts.size();
-		assert termAndCounts.size() == classes.size();
+		Preconditions.checkState(termAndCounts.size() == termCounts.size());
+		Preconditions.checkState(termAndCounts.size() == classes.size());
 		int numDoc = termAndCounts.size();
 
 		// Calculate idf of each term
 		for (Map.Entry<String, Integer> entry : numAppearance.entrySet()) {
-			invDocFreq.put(entry.getKey(),
-					Math.log10(1.0 * numDoc / entry.getValue()));			
+			invDocFreq.put(entry.getKey(), Math.log10(1.0 * numDoc / entry.getValue()));
 		}
 
 		// Calculate tfidf of each term in each document
@@ -98,16 +99,14 @@ public class TfidfCalculator {
 			int wc = termCounts.get(i);
 			tfidf = new HashMap<String, Double>();
 			String term = null;
-			for (Map.Entry<String, Integer> entry : termAndCounts.get(i)
-					.entrySet()) {
+			for (Map.Entry<String, Integer> entry : termAndCounts.get(i).entrySet()) {
 				term = entry.getKey();
-				tfidf.put(term,
-						(1.0 * entry.getValue() / wc) * invDocFreq.get(term));
+				tfidf.put(term, (1.0 * entry.getValue() / wc) * invDocFreq.get(term));
 			}
 			tfidfs.add(tfidf);
 		}
 
-		assert tfidfs.size() == termAndCounts.size();
+		Preconditions.checkState(tfidfs.size() == termAndCounts.size());
 		System.out.println("numDoc: " + numDoc);
 
 		// generate the vector space model file
@@ -116,20 +115,22 @@ public class TfidfCalculator {
 			out = new PrintWriter(outputFilePath);
 			StringBuilder sb = null;
 			String line = null;
-			
-			/** print out the terms
+
+			// print out the terms
+			/*
 			sb = new StringBuilder();
 			sb.append("class_unique");
-			sb.append(",");			
-			for(int i = 0; i < termIndexMapping.size(); i++){
+			sb.append(",");
+			for (int i = 0; i < termIndexMapping.size(); i++) {
 				sb.append(termIndexMapping.get(i));
-				sb.append(",");			
+				sb.append(",");
 			}
 			sb.setLength(sb.length() - 1);
 			line = sb.toString();
 			out.println(line);
-			*/			
-			
+			*/
+
+
 			// print out the vector space model
 			for (int i = 0; i < numDoc; i++) {
 				sb = new StringBuilder();
