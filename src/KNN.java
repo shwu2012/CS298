@@ -4,6 +4,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.Callable;
@@ -18,72 +19,76 @@ import com.google.common.base.Stopwatch;
 
 public class KNN {
 	private static final Logger log = Logger.getLogger(KNN.class.getName());
-	private static final int POOL_SIZE = 4;
+	// this would be the same as the number of CPUs
+	private static final int POOL_SIZE = 8;
 
 	private final Stopwatch stopwatch = Stopwatch.createUnstarted();
 	private final ExecutorService pool;
 
 	private final int k;
 	private final ArrayList<DataPoint> dataSet;
-	private final int numInstance;
+	private final int numInstances;
 	private final ArrayList<DataPoint> selectedDataSet;
 
 	public KNN(int k, ArrayList<Integer> featureSelectionResult, ArrayList<DataPoint> dataSet) {
 		this.k = k;
 		this.dataSet = dataSet;
-		this.numInstance = dataSet.size();
+		this.numInstances = dataSet.size();
 		this.selectedDataSet = createSelectedDataSet(featureSelectionResult);
 		this.pool = Executors.newFixedThreadPool(POOL_SIZE);
 	}
 
-	private ArrayList<ArrayList<Double>> createDistanceMatrix() {
+	private static List<Integer> randomlyPickNumbers(int start, int length, int n) {
+		List<Integer> list = new ArrayList<>(length);
+		for (int i = 0; i < length; i++) {
+			list.add(start + i);
+		}
+		Collections.shuffle(list);
+		return list.subList(0, n);
+	}
+
+	private ArrayList<ArrayList<Double>> createDistanceMatrix(int numSampleInstances) {
 		stopwatch.reset();
 		ArrayList<ArrayList<Double>> distanceMatrix = new ArrayList<ArrayList<Double>>();
-		ArrayList<Double> featureValues = null;
-		ArrayList<Double> featureValuesInnerLoop = null;
-		// the distance between a certain instance to every other instances.
-		ArrayList<Double> distances = null;
-		double distance = -1.0;
-		for (int i = 0; i < numInstance; i++) {
+
+		// get sample instances
+		List<Integer> sampleIndices = randomlyPickNumbers(0, numInstances, numSampleInstances);
+		log.fine("sampleIndices: " + sampleIndices);
+
+		for (int i = 0; i < numSampleInstances; i++) {
 			stopwatch.start();
-			featureValues = this.selectedDataSet.get(i).getFeatureValues();
-			distances = new ArrayList<Double>(numInstance);
+			int sampleInstanceIndex = sampleIndices.get(i);
+			// pick a sample instance
+			DataPoint sampleDataPoint = this.selectedDataSet.get(sampleInstanceIndex);
+			// the distance between a sample instance to every other instances.
+			ArrayList<Double> distances = new ArrayList<>(numInstances);
 			Collection<Callable<Void>> distanceCalculationTasks = new LinkedList<Callable<Void>>();
-			for (int j = 0; j < numInstance; j++) {
-				distances.add(-1.0);
-				if (i < j) {
-					featureValuesInnerLoop = this.selectedDataSet.get(j).getFeatureValues();
-					distanceCalculationTasks.add(new CalcEuclideanDistanceTask(featureValues,
-							featureValuesInnerLoop, distances, j));
+
+			final int instancesGroupSize = 100;
+			for (int j = 0; j < numInstances; j += instancesGroupSize) {
+				int groupSize = instancesGroupSize;
+				if (j + instancesGroupSize > numInstances) {
+					groupSize = numInstances - j;
 				}
+				for (int m = 0; m < groupSize; m++) {
+					distances.add(-0.1);
+				}
+				distanceCalculationTasks.add(new CalcEuclideanDistanceTask(sampleDataPoint,
+						selectedDataSet.subList(j, j + groupSize), distances, j, groupSize));
 			}
 
 			try {
 				for (Future<Void> f : pool.invokeAll(distanceCalculationTasks)) {
 					// do real distance calculation for each pair of points
-					// (where i < j)
 					f.get();
 				}
 			} catch (InterruptedException | ExecutionException e) {
 				throw new RuntimeException(e);
 			}
 
-			for (int j = 0; j < numInstance; j++) {
-				if (i < j) {
-					Preconditions.checkState(distances.get(j) >= 0.0,
-							"Those distances should be calculated if i < j");
-				} else if (i == j) {
-					distances.set(j, 0.0);
-				} else {
-					// i > j, can do this since the matrix is diagonally
-					// symmetric
-					distance = distanceMatrix.get(j).get(i);
-					distances.set(j, distance);
-				}
-			}
 			distanceMatrix.add(distances);
 			stopwatch.stop();
-			log.fine("filled distance for data point " + i + "/" + numInstance
+			log.fine("filled distance for data point " + i + "/" + numInstances
 					+ " (to all other data points) " + stopwatch);
 		}
 		log.info("createDistanceMatrix done." + stopwatch);
@@ -93,7 +98,7 @@ public class KNN {
 	private ArrayList<DataPoint> createSelectedDataSet(ArrayList<Integer> featureSelectionResult) {
 		ArrayList<DataPoint> result = new ArrayList<>();
 		int numFeatures = featureSelectionResult.size();
-		for (int i = 0; i < numInstance; i++) {
+		for (int i = 0; i < numInstances; i++) {
 			DataPoint dataSet = new DataPoint();
 			dataSet.setClassName(this.dataSet.get(i).getClassName());
 			ArrayList<Double> selectedFeatureValues = new ArrayList<>();
@@ -108,19 +113,25 @@ public class KNN {
 		return result;
 	}
 
-	private double calcAccuracy() {
+	private double calcAccuracy(int numSampleInstances) {
+		Preconditions.checkArgument(numSampleInstances <= numInstances,
+				"Invalid number of samples: %s of out %s", numSampleInstances, numInstances);
 		int numCorrectClassification = 0;
-		ArrayList<ArrayList<Double>> distanceMatrix = createDistanceMatrix();
+		// Calculate the distance matrix of numSampleInstances rows by
+		// numInstance columns.
+		ArrayList<ArrayList<Double>> distanceMatrix = createDistanceMatrix(numSampleInstances);
+		Preconditions.checkArgument(distanceMatrix.size() == numSampleInstances);
+		Preconditions.checkArgument(distanceMatrix.get(0).size() == numInstances);
 		stopwatch.reset().start();
-		ArrayList<IndexedValue<Double>> indexedDoubles = null;
-		for (int i = 0; i < numInstance; i++) {
-			// find the top k nearest neighbor of the i-th instance
-			indexedDoubles = makeIndexedValue(distanceMatrix.get(i));
-			Collections.sort(indexedDoubles, new DistanceComparator());
+		ArrayList<IndexedValue<Double>> distancesWithIndex = null;
+		for (int i = 0; i < numSampleInstances; i++) {
+			// find the top k nearest neighbor of the i-th sample instance
+			distancesWithIndex = makeIndexedValue(distanceMatrix.get(i));
+			Collections.sort(distancesWithIndex, new DistanceComparator());
 			// get the classes of top k nearest neighbors and put in a hashmap
 			HashMap<String, Integer> hm = new HashMap<>();
 			for (int j = 0; j < k; j++) {
-				String className = dataSet.get(indexedDoubles.get(j).getIndex()).getClassName();
+				String className = dataSet.get(distancesWithIndex.get(j).getIndex()).getClassName();
 				if (hm.containsKey(className)) {
 					hm.put(className, hm.get(className) + 1);
 				} else {
@@ -135,24 +146,26 @@ public class KNN {
 			}
 		}
 		stopwatch.stop();
-		log.fine("calcAccuracy done using KNN on " + numInstance + " instances. " + stopwatch);
-		return ((double) numCorrectClassification) / numInstance;
+		log.fine("calcAccuracy done using KNN on " + numSampleInstances + " sample instances. "
+				+ stopwatch);
+		return ((double) numCorrectClassification) / numSampleInstances;
 	}
 
 	public double calcFitness(double alpha, double beta) {
 		int numFeatures = this.dataSet.get(0).getFeatureValues().size();
 		int numSelectedFeatures = this.selectedDataSet.get(0).getFeatureValues().size();
-		return alpha * calcAccuracy() + beta
+		int numSample = numInstances / 100;
+		return alpha * calcAccuracy(numSample) + beta
 				* (((double) (numFeatures - numSelectedFeatures)) / numFeatures);
 	}
 
-	private ArrayList<IndexedValue<Double>> makeIndexedValue(ArrayList<Double> featureValues) {
+	private static ArrayList<IndexedValue<Double>> makeIndexedValue(ArrayList<Double> list) {
 		ArrayList<IndexedValue<Double>> indexedDoubles = new ArrayList<>();
 		IndexedValue<Double> iv = null;
-		for (int i = 0; i < featureValues.size(); i++) {
+		for (int i = 0; i < list.size(); i++) {
 			iv = new IndexedValue<>();
 			iv.setIndex(i);
-			iv.setValue(featureValues.get(i));
+			iv.setValue(list.get(i));
 			indexedDoubles.add(iv);
 		}
 		return indexedDoubles;
@@ -177,33 +190,48 @@ public class KNN {
 	}
 
 	private static class CalcEuclideanDistanceTask implements Callable<Void> {
-		private final ArrayList<Double> instance1;
-		private final ArrayList<Double> instance2;
+		private final DataPoint sampleInstance;
+		private final List<DataPoint> instances;
 		private final ArrayList<Double> result;
-		private final int resultIndex;
+		private final int resultStartIndex;
+		private final int resultLength;
 		private final int numFeatures;
 
-		public CalcEuclideanDistanceTask(ArrayList<Double> instance1, ArrayList<Double> instance2,
-				ArrayList<Double> result, int resultIndex) {
-			this.instance1 = instance1;
-			this.instance2 = instance2;
-			Preconditions.checkArgument(instance1.size() == instance2.size(),
+		public CalcEuclideanDistanceTask(DataPoint sampleInstance, List<DataPoint> instances,
+				ArrayList<Double> result, int resultStartIndex, int resultLength) {
+			Preconditions.checkArgument(!instances.isEmpty());
+			Preconditions.checkArgument(sampleInstance.getFeatureValues().size() == instances
+					.get(0).getFeatureValues().size(),
 					"Euclidean distance must be applied on 2 points with same dimension.");
-			this.numFeatures = instance1.size();
-			Preconditions.checkArgument(resultIndex < result.size(),
-					"Result is too small to have the index: " + resultIndex);
+			Preconditions.checkArgument(resultStartIndex + resultLength <= result.size(),
+					"Result is too small to have the index. start: %s, length: %s",
+					resultStartIndex, resultLength);
+			this.sampleInstance = sampleInstance;
+			this.instances = instances;
+			this.numFeatures = sampleInstance.getFeatureValues().size();
 			this.result = result;
-			this.resultIndex = resultIndex;
+			this.resultStartIndex = resultStartIndex;
+			this.resultLength = resultLength;
 		}
 
 		@Override
 		public Void call() throws Exception {
+			for (int i = 0; i < resultLength; i++) {
+				result.set(
+						resultStartIndex + i,
+						calculateDistance(sampleInstance.getFeatureValues(), instances.get(i)
+								.getFeatureValues()));
+			}
+			return null;
+		}
+
+		// actually it returns the square of the distance
+		private double calculateDistance(ArrayList<Double> instance1, ArrayList<Double> instance2) {
 			double sum = 0.0;
 			for (int i = 0; i < numFeatures; i++) {
 				sum += Math.pow(instance1.get(i) - instance2.get(i), 2);
 			}
-			result.set(resultIndex, Math.sqrt(sum));
-			return null;
+			return sum;
 		}
 	}
 }
