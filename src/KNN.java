@@ -64,7 +64,7 @@ public class KNN {
 			ArrayList<Double> distances = new ArrayList<>(numInstances);
 			Collection<Callable<Void>> distanceCalculationTasks = new LinkedList<Callable<Void>>();
 
-			final int instancesGroupSize = 100;
+			final int instancesGroupSize = 1000;
 			for (int j = 0; j < numInstances; j += instancesGroupSize) {
 				int groupSize = instancesGroupSize;
 				if (j + instancesGroupSize > numInstances) {
@@ -88,8 +88,8 @@ public class KNN {
 
 			distanceMatrix.add(distances);
 			stopwatch.stop();
-			log.fine("filled distance for data point " + i + "/" + numInstances
-					+ " (to all other data points) " + stopwatch);
+			log.fine("filled distance for data point " + i + "/" + numSampleInstances
+					+ " (to points) " + stopwatch);
 		}
 		log.info("createDistanceMatrix done." + stopwatch);
 		return distanceMatrix;
@@ -146,16 +146,17 @@ public class KNN {
 			}
 		}
 		stopwatch.stop();
-		log.fine("calcAccuracy done using KNN on " + numSampleInstances + " sample instances. "
-				+ stopwatch);
-		return ((double) numCorrectClassification) / numSampleInstances;
+		double accuracy = ((double) numCorrectClassification) / numSampleInstances;
+		log.fine("accuracy = " + accuracy + ", using KNN on " + numSampleInstances
+				+ " sample instances. " + stopwatch);
+		return accuracy;
 	}
 
 	public double calcFitness(double alpha, double beta) {
 		int numFeatures = this.dataSet.get(0).getFeatureValues().size();
 		int numSelectedFeatures = this.selectedDataSet.get(0).getFeatureValues().size();
-		int numSample = numInstances / 100;
-		return alpha * calcAccuracy(numSample) + beta
+		int numSamples = numInstances / 10;
+		return alpha * calcAccuracy(numSamples) + beta
 				* (((double) (numFeatures - numSelectedFeatures)) / numFeatures);
 	}
 

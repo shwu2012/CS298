@@ -137,7 +137,7 @@ public class BPSOSearch {
 		// calculate fitnessPbests and fitnessGbest, fill fitnessPositions
 		int bestIndex = -1;
 		for (int i = 0; i < numParticles; i++) {
-			log.info("initial calculation on fitness Pbests/Gbests start. particle: " + i + "/"
+			log.info(">>>> initial calculation on fitness Pbests/Gbests start. particle: " + i + "/"
 					+ numParticles);
 			stopwatch.reset().start();
 			double fitnessPbest = fitness(pbests.get(i));
@@ -160,12 +160,12 @@ public class BPSOSearch {
 			gbest.set(i, al.get(i));
 		}
 
-		log.info("start PSO iterations");
+		log.info(">>>> start PSO iterations");
 		stopwatch.reset();
 		for (int i = 0; i < numIterations; i++) {
-			log.info("start iteration: " + i + "/" + numIterations);
+			log.info(">>>> start iteration: " + i + "/" + numIterations);
 			for (int j = 0; j < numParticles; j++) {
-				log.info("start particle: " + j + "/" + numParticles);
+				log.info(">>>> start particle: " + j + "/" + numParticles);
 				stopwatch.start();
 
 				ArrayList<Integer> position = positions.get(j);
