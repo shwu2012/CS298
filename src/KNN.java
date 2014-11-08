@@ -236,24 +236,3 @@ public class KNN {
 		}
 	}
 }
-
-class IndexedValue<T> {
-	private int index;
-	private T value;
-
-	public int getIndex() {
-		return index;
-	}
-
-	public void setIndex(int index) {
-		this.index = index;
-	}
-
-	public T getValue() {
-		return value;
-	}
-
-	public void setValue(T value) {
-		this.value = value;
-	}
-}
