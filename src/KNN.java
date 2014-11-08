@@ -196,7 +196,6 @@ public class KNN {
 		private final ArrayList<Double> result;
 		private final int resultStartIndex;
 		private final int resultLength;
-		private final int numFeatures;
 
 		public CalcEuclideanDistanceTask(DataPoint sampleInstance, List<DataPoint> instances,
 				ArrayList<Double> result, int resultStartIndex, int resultLength) {
@@ -209,7 +208,6 @@ public class KNN {
 					resultStartIndex, resultLength);
 			this.sampleInstance = sampleInstance;
 			this.instances = instances;
-			this.numFeatures = sampleInstance.getFeatureValues().size();
 			this.result = result;
 			this.resultStartIndex = resultStartIndex;
 			this.resultLength = resultLength;
@@ -218,21 +216,10 @@ public class KNN {
 		@Override
 		public Void call() throws Exception {
 			for (int i = 0; i < resultLength; i++) {
-				result.set(
-						resultStartIndex + i,
-						calculateDistance(sampleInstance.getFeatureValues(), instances.get(i)
-								.getFeatureValues()));
+				result.set(resultStartIndex + i, MathUtil.euclideanDistance(
+						sampleInstance.getFeatureValues(), instances.get(i).getFeatureValues()));
 			}
 			return null;
-		}
-
-		// actually it returns the square of the distance
-		private double calculateDistance(ArrayList<Double> instance1, ArrayList<Double> instance2) {
-			double sum = 0.0;
-			for (int i = 0; i < numFeatures; i++) {
-				sum += Math.pow(instance1.get(i) - instance2.get(i), 2);
-			}
-			return sum;
 		}
 	}
 }

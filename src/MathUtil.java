@@ -42,4 +42,14 @@ public final class MathUtil {
 		});
 		return unsortedValuesWithIndex.get(count / 2);
 	}
+
+	public static double euclideanDistance(List<Double> instance1, List<Double> instance2) {
+		Preconditions.checkArgument(instance1.size() == instance2.size());
+		int dimension = instance1.size();
+		double sum = 0.0;
+		for (int i = 0; i < dimension; i++) {
+			sum += Math.pow(instance1.get(i) - instance2.get(i), 2);
+		}
+		return Math.sqrt(sum);
+	}
 }

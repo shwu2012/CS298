@@ -1,3 +1,5 @@
+import java.util.Stack;
+
 import com.google.common.base.Preconditions;
 
 public class KdTree {
@@ -70,11 +72,74 @@ public class KdTree {
 		return splitFeatureIndex;
 	}
 
+	public DataPoint findNearestNode(final DataPoint point) {
+		Stack<Node> searchPath = new Stack<>();
+		Node node = rootNode;
+		while (node != null) {
+			searchPath.push(node);
+			int splitFeatureIndex = node.getSplitFeatureIndex();
+			if (node.getDataPoint().equals(point)) {
+				return node.getDataPoint();
+			} else if (point.getFeatureValues().get(splitFeatureIndex) < node.getDataPoint()
+					.getFeatureValues().get(splitFeatureIndex)) {
+				node = node.getLeftChild();
+			} else {
+				node = node.getRightChild();
+			}
+		}
+
+		// Back-track to find the nearest node with minimal distance.
+		node = searchPath.pop();
+		double distance = MathUtil.euclideanDistance(node.getDataPoint().getFeatureValues(),
+				point.getFeatureValues());
+		Node nearestNode = node;
+		double minDistance = distance;
+		Range rangeAlreadySearched = node.getRange();
+
+		while (!searchPath.empty()) {
+			// Try previous split point in the search path.
+			node = searchPath.pop();
+			// Need to search another half-space of the split node?
+			boolean searchAnotherHalfSpace = minDistance > Math.abs(point.getFeatureValues().get(
+					node.getSplitFeatureIndex())
+					- node.getDataPoint().getFeatureValues().get(node.getSplitFeatureIndex()));
+
+			distance = MathUtil.euclideanDistance(node.getDataPoint().getFeatureValues(),
+					point.getFeatureValues());
+			if (distance < minDistance) {
+				minDistance = distance;
+				nearestNode = node;
+			}
+
+			if (searchAnotherHalfSpace) {
+				Node splitDataNodeInAnotherHalf = null;
+				if (rangeAlreadySearched == Range.LEFT) {
+					// Go on searching on right-half space since left-half space
+					// has been searched.
+					splitDataNodeInAnotherHalf = node.getRightChild();
+				} else {
+					// Go on searching on left-half space since right-half space
+					// has been searched.
+					splitDataNodeInAnotherHalf = node.getLeftChild();
+				}
+
+				if (splitDataNodeInAnotherHalf != null) {
+					// Add the new split node (if exists) into the search path.
+					searchPath.push(splitDataNodeInAnotherHalf);
+				}
+			}
+
+			rangeAlreadySearched = node.getRange();
+		}
+
+		return nearestNode.getDataPoint();
+	}
+
 	public Node getRootNode() {
 		return rootNode;
 	}
 
-	public static class Node {
+	static class Node {
 		private DataPoint dataPoint;
 		private int splitFeatureIndex;
 		private Node leftChild;

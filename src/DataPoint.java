@@ -1,10 +1,12 @@
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 import com.google.common.base.Objects;
 
 public class DataPoint {
 	private String className;
-	private ArrayList<Double> featureValues;
+	private List<Double> featureValues;
 
 	public String getClassName() {
 		return className;
@@ -14,12 +16,12 @@ public class DataPoint {
 		this.className = className;
 	}
 
-	public ArrayList<Double> getFeatureValues() {
-		return featureValues;
+	public List<Double> getFeatureValues() {
+		return Collections.unmodifiableList(featureValues);
 	}
 
-	public void setFeatureValues(ArrayList<Double> featureValues) {
-		this.featureValues = featureValues;
+	public void setFeatureValues(List<Double> featureValues) {
+		this.featureValues = new ArrayList<>(featureValues);
 	}
 
 	@Override
