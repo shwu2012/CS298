@@ -8,6 +8,14 @@ public class DataPoint {
 	private String className;
 	private List<Double> featureValues;
 
+	public DataPoint() {
+	}
+
+	public DataPoint(String className, List<Double> featureValues) {
+		setClassName(className);
+		setFeatureValues(featureValues);
+	}
+
 	public String getClassName() {
 		return className;
 	}
@@ -22,6 +30,10 @@ public class DataPoint {
 
 	public void setFeatureValues(List<Double> featureValues) {
 		this.featureValues = new ArrayList<>(featureValues);
+	}
+
+	public boolean equalsIgnoringClassName(DataPoint other) {
+		return Objects.equal(featureValues, other.featureValues);
 	}
 
 	@Override

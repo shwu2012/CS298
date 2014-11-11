@@ -5,6 +5,7 @@ import java.util.Comparator;
 import java.util.List;
 
 import com.google.common.base.Preconditions;
+import com.google.common.collect.Lists;
 import com.google.common.math.DoubleMath;
 
 public final class MathUtil {
@@ -51,5 +52,9 @@ public final class MathUtil {
 			sum += Math.pow(instance1.get(i) - instance2.get(i), 2);
 		}
 		return Math.sqrt(sum);
+	}
+
+	public static DataPoint makeInstance(double x1, double x2) {
+		return new DataPoint(null, Lists.newArrayList(x1, x2));
 	}
 }
