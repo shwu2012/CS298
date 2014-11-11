@@ -110,7 +110,7 @@ public class BPSOSearch {
 
 	private double fitness(ArrayList<Integer> position) {
 		KNN knn = new KNN(5, position, this.dataSets);
-		return knn.calcFitness(ALPHA, BETA);
+		return knn.calcFitness(ALPHA, BETA, KNN.SearchMethod.KD_TREE);
 	}
 
 	private String printFitness(ArrayList<Double> fitnesses) {

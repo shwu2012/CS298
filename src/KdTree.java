@@ -19,21 +19,32 @@ public class KdTree {
 		this.numNodes = numNodes;
 	}
 
-	public static KdTree build(DataSet dataSet) {
-		return new KdTree(build(dataSet, null), dataSet.getSize());
+	public static KdTree build(DataSet dataSet, boolean useIncrementalSplitFeatureIndex) {
+		return new KdTree(build(dataSet, null, useIncrementalSplitFeatureIndex ? 0 : -1),
+				dataSet.getSize());
 	}
 
-	private static Node build(DataSet dataSet, Range range) {
+	public static KdTree build(DataSet dataSet) {
+		return build(dataSet, false);
+	}
+
+	private static Node build(DataSet dataSet, Range range, int splitFeatureIndex) {
 		Preconditions.checkNotNull(dataSet);
+		log.fine("Building KdTree from data set: " + dataSet.getSize());
 		int numInstances = dataSet.getSize();
 		if (numInstances == 0) {
 			return null;
 		}
 
 		// Select a dimension (i.e. feature index) and an instance to split.
-		int splitFeatureIndex = selectSplitFeature(dataSet);
+		if (splitFeatureIndex < 0) {
+			// No splitFeatureIndex is assigned, so we select the split feature by ourselves.
+			splitFeatureIndex = selectSplitFeature(dataSet);
+		}
+		log.fine("selected split dimension: " + splitFeatureIndex);
 		IndexedValue<Double> splitFeatureValueAndInstanceIndex = MathUtil.median(dataSet
 				.getSingleFeatureValues(splitFeatureIndex));
+		log.fine("selected split value, and instance#: " + splitFeatureValueAndInstanceIndex);
 		double splitFeatureValue = splitFeatureValueAndInstanceIndex.getValue();
 		int splitInstanceIndex = splitFeatureValueAndInstanceIndex.getIndex();
 		DataPoint splitDataPoint = dataSet.getMutateInstance(splitInstanceIndex);
@@ -54,12 +65,13 @@ public class KdTree {
 		}
 
 		// Build the tree recursively.
+		int nextSplitFeatureIndex = (splitFeatureIndex + 1) % dataSet.getDimension();
 		Node node = new Node();
 		node.setRange(range);
 		node.setDataPoint(splitDataPoint);
 		node.setSplitFeatureIndex(splitFeatureIndex);
-		node.setLeftChild(build(dataSetForLeftSubTree, Range.LEFT));
-		node.setRightChild(build(dataSetForRightSubTree, Range.RIGHT));
+		node.setLeftChild(build(dataSetForLeftSubTree, Range.LEFT, nextSplitFeatureIndex));
+		node.setRightChild(build(dataSetForRightSubTree, Range.RIGHT, nextSplitFeatureIndex));
 
 		return node;
 	}
@@ -94,11 +106,11 @@ public class KdTree {
 			final Stack<Node> searchPath, final DataPoint searchPoint) {
 		Node node = rootNode;
 		while (node != null) {
-			log.info("push: " + node);
+			log.fine("push: " + node);
 			searchPath.push(node);
 			int splitFeatureIndex = node.getSplitFeatureIndex();
 			if (node.getDataPoint().equalsIgnoringClassName(searchPoint)) {
-				log.info("found the node with exactly same data point: " + node);
+				log.fine("found the node with exactly same data point: " + node);
 				return node;
 			} else if (searchPoint.getFeatureValues().get(splitFeatureIndex) < node.getDataPoint()
 					.getFeatureValues().get(splitFeatureIndex)) {
@@ -129,7 +141,7 @@ public class KdTree {
 			final DataPoint searchPoint) {
 		Node node = rootNode;
 		while (node != null) {
-			log.info("push: " + node);
+			log.fine("push: " + node);
 			searchPath.push(node);
 			int splitFeatureIndex = node.getSplitFeatureIndex();
 			if (searchPoint.getFeatureValues().get(splitFeatureIndex) < node.getDataPoint()
@@ -142,7 +154,7 @@ public class KdTree {
 	}
 
 	public DataPoint findNearestNode(final DataPoint searchPoint) {
-		log.info("findNearestNode: " + searchPoint);
+		log.fine("findNearestNode: " + searchPoint);
 		Stack<Node> searchPath = new Stack<>();
 		Node nodeWithExactlySameData = followTreeToLeafOrEarlyReturn(rootNode, searchPath,
 				searchPoint);
@@ -159,7 +171,7 @@ public class KdTree {
 		while (!searchPath.empty()) {
 			// Try previous split point in the search path.
 			Node node = searchPath.pop();
-			log.info("pop: " + node);
+			log.fine("pop: " + node);
 			// Need to search another half-space of the split node?
 			int splitFeatureIndex = node.getSplitFeatureIndex();
 			boolean searchAnotherHalfSpace = minDistance > Math.abs(searchPoint.getFeatureValues()
@@ -181,12 +193,12 @@ public class KdTree {
 				if (rangeAlreadySearched == Range.LEFT) {
 					// Go on searching on right-half space since left-half space
 					// has been searched.
-					log.info("try search right-half");
+					log.fine("try search right-half");
 					splitDataNodeInAnotherHalf = node.getRightChild();
 				} else {
 					// Go on searching on left-half space since right-half space
 					// has been searched.
-					log.info("try search left-half");
+					log.fine("try search left-half");
 					splitDataNodeInAnotherHalf = node.getLeftChild();
 				}
 
@@ -207,7 +219,7 @@ public class KdTree {
 	}
 
 	public DataPointSet findKNearestNodes(final DataPoint searchPoint, final int numK) {
-		log.info("findKNearestNodes: " + searchPoint + ", K=" + numK);
+		log.fine("findKNearestNodes: " + searchPoint + ", K=" + numK);
 		Preconditions.checkArgument(numK <= numNodes);
 		DataPointSet kNearestDataPoints = new DataPointSet(numK);
 
@@ -241,12 +253,12 @@ public class KdTree {
 				if (rangeAlreadySearched == Range.LEFT) {
 					// Go on searching on right-half space since left-half space
 					// has been searched.
-					log.info("try search right-half");
+					log.fine("try search right-half");
 					splitDataNodeInAnotherHalf = node.getRightChild();
 				} else {
 					// Go on searching on left-half space since right-half space
 					// has been searched.
-					log.info("try search left-half");
+					log.fine("try search left-half");
 					splitDataNodeInAnotherHalf = node.getLeftChild();
 				}
 

@@ -80,5 +80,10 @@ public class KdTreeTest extends TestCase {
 				Sets.newHashSet(MathUtil.makeInstance(5, 4), MathUtil.makeInstance(7, 2),
 						MathUtil.makeInstance(9, 6)),
 				tree.findKNearestNodes(MathUtil.makeInstance(6.99, 3.99), 3).getDataPoints());
+		// Search an existing data point.
+		assertEquals(
+				Sets.newHashSet(MathUtil.makeInstance(5, 4), MathUtil.makeInstance(7, 2),
+						MathUtil.makeInstance(9, 6)),
+				tree.findKNearestNodes(MathUtil.makeInstance(9, 6), 3).getDataPoints());
 	}
 }

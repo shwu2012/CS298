@@ -58,9 +58,9 @@ public class DataPointSet {
 	public DataPoint add(DataPoint newPoint, double distance) {
 		Preconditions.checkArgument(newPoint != null);
 		Preconditions.checkArgument(distance >= 0.0);
-		log.info("add: " + newPoint);
 		if (points.containsKey(newPoint)) {
-			throw new IllegalArgumentException("Cannot add duplicated data point: " + newPoint);
+			log.fine("ignore duplicated data point: " + newPoint);
+			return newPoint;
 		}
 
 		// If the set doesn't reach the capacity, we simply add the new point.
