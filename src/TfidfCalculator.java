@@ -29,7 +29,8 @@ public class TfidfCalculator {
 	// the term and index mapping
 	private ArrayList<String> termIndexMapping = new ArrayList<String>();
 
-	public void calculate(String inputFilePath, String outputFilePath) {
+	public void calculate(final String inputFilePath, final String outputFilePath,
+			final boolean isNormalizeVector) {
 		BufferedReader in = null;
 		try {
 			in = new BufferedReader(new FileReader(inputFilePath));
@@ -57,8 +58,8 @@ public class TfidfCalculator {
 				termAndCounts.add(termAndCount);
 				termCounts.add(terms.length - 1);
 			}
-		} catch (IOException x) {
-			System.err.format("IOException: %s%n", x);
+		} catch (IOException ex) {
+			ex.printStackTrace();
 		} finally {
 			try {
 				if (in != null) {
@@ -113,43 +114,25 @@ public class TfidfCalculator {
 		PrintWriter out = null;
 		try {
 			out = new PrintWriter(outputFilePath);
-			StringBuilder sb = null;
-			String line = null;
-
-			// print out the terms
-			/*
-			sb = new StringBuilder();
-			sb.append("class_unique");
-			sb.append(",");
-			for (int i = 0; i < termIndexMapping.size(); i++) {
-				sb.append(termIndexMapping.get(i));
-				sb.append(",");
-			}
-			sb.setLength(sb.length() - 1);
-			line = sb.toString();
-			out.println(line);
-			*/
-
 
 			// print out the vector space model
 			for (int i = 0; i < numDoc; i++) {
-				sb = new StringBuilder();
-				sb.append(classes.get(i));
-				sb.append(",");
-				String term = null;
+				ArrayList<Double> featureValues = new ArrayList<Double>();
 				for (int j = 0; j < termIndexMapping.size(); j++) {
-					term = termIndexMapping.get(j);
+					String term = termIndexMapping.get(j);
 					HashMap<String, Double> temp = tfidfs.get(i);
 					if (temp.containsKey(term)) {
-						sb.append(temp.get(term));
+						featureValues.add(temp.get(term).doubleValue());
 					} else {
-						sb.append(0);
+						featureValues.add(0.0);
 					}
-					sb.append(",");
 				}
-				sb.setLength(sb.length() - 1);
-				line = sb.toString();
-				out.println(line);
+
+				if (isNormalizeVector) {
+					normalizeVector(featureValues);
+				}
+
+				out.println(toTextLine(new DataPoint(classes.get(i), featureValues)));
 			}
 		} catch (FileNotFoundException e) {
 			e.printStackTrace();
@@ -159,9 +142,47 @@ public class TfidfCalculator {
 		}
 	}
 
-	public static void main(String[] args) {
-		TfidfCalculator tc = new TfidfCalculator();
-		tc.calculate(args[0], args[1]);
+	private static String toTextLine(DataPoint instance) {
+		StringBuilder sb = new StringBuilder();
+		sb.append(instance.getClassName());
+		for (double value : instance.getFeatureValues()) {
+			sb.append(",");
+			sb.append(value);
+		}
+		return sb.toString();
 	}
 
+	private static void normalizeVector(ArrayList<Double> values) {
+		double length = 0.0;
+		for (double value : values) {
+			length += value * value;
+		}
+		length = Math.sqrt(length);
+		for (int i = 0; i < values.size(); i++) {
+			values.set(i, values.get(i) / length);
+		}
+	}
+
+	public static void main(String[] args) {
+		TfidfCalculator tc = new TfidfCalculator();
+		boolean isNormalizeVector = false;
+		if ((args.length == 2) || (args.length == 3 && args[2].equals("-n"))) {
+			isNormalizeVector = args.length == 3;
+		} else {
+			System.err.printf("usage: %s inputFilePath, outputFilePath [-n]\n",
+					TfidfCalculator.class.getName());
+			System.err.printf("options:\n");
+			System.err
+					.printf("\t-n: normalize vectors to unit-vectors (i.e. the length is 1.0).\n");
+			System.exit(1);
+		}
+		String inputFilePath = args[0];
+		String outputFilePath = args[1];
+		if (isNormalizeVector) {
+			outputFilePath += "_normalized";
+		}
+		System.out.printf("inputFilePath=%s, outputFilePath=%s, isNormalizeVector=%s\n",
+				inputFilePath, outputFilePath, isNormalizeVector);
+		tc.calculate(inputFilePath, outputFilePath, isNormalizeVector);
+	}
 }
