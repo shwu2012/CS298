@@ -44,7 +44,12 @@ public final class MathUtil {
 		return unsortedValuesWithIndex.get(count / 2);
 	}
 
-	public static double euclideanDistance(List<Double> instance1, List<Double> instance2) {
+	public static double calculateDistance(List<Double> instance1, List<Double> instance2) {
+		//return calculateEuclideanDistance(instance1, instance2);
+		return calculateCosineSimilarity(instance1, instance2);
+	}
+
+	private static double calculateEuclideanDistance(List<Double> instance1, List<Double> instance2) {
 		Preconditions.checkArgument(instance1.size() == instance2.size());
 		int dimension = instance1.size();
 		double sum = 0.0;
@@ -52,6 +57,24 @@ public final class MathUtil {
 			sum += Math.pow(instance1.get(i) - instance2.get(i), 2);
 		}
 		return Math.sqrt(sum);
+	}
+
+	private static double calculateCosineSimilarity(List<Double> instance1, List<Double> instance2) {
+		Preconditions.checkArgument(instance1.size() == instance2.size());
+		int dimension = instance1.size();
+		double sum = 0.0;
+		for (int i = 0; i < dimension; i++) {
+			sum += (instance1.get(i) * instance2.get(i));
+		}
+		return sum / (vectorLength(instance1) * vectorLength(instance2));
+	}
+
+	private static double vectorLength(List<Double> instance) {
+		double length = 0.0;
+		for (double value : instance) {
+			length += value * value;
+		}
+		return Math.sqrt(length);
 	}
 
 	public static DataPoint makeInstance(double x1, double x2) {

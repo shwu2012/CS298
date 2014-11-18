@@ -274,7 +274,7 @@ public class KNN {
 		@Override
 		public Void call() throws Exception {
 			for (int i = 0; i < resultLength; i++) {
-				result.set(resultStartIndex + i, MathUtil.euclideanDistance(
+				result.set(resultStartIndex + i, MathUtil.calculateDistance(
 						sampleInstance.getFeatureValues(), instances.get(i).getFeatureValues()));
 			}
 			return null;

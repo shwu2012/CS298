@@ -178,7 +178,7 @@ public class KdTree {
 					.get(splitFeatureIndex)
 					- node.getDataPoint().getFeatureValues().get(splitFeatureIndex));
 
-			distance = MathUtil.euclideanDistance(node.getDataPoint().getFeatureValues(),
+			distance = MathUtil.calculateDistance(node.getDataPoint().getFeatureValues(),
 					searchPoint.getFeatureValues());
 			if (distance < minDistance) {
 				minDistance = distance;
@@ -240,7 +240,7 @@ public class KdTree {
 							.get(splitFeatureIndex)
 							- node.getDataPoint().getFeatureValues().get(splitFeatureIndex)));
 
-			distance = MathUtil.euclideanDistance(node.getDataPoint().getFeatureValues(),
+			distance = MathUtil.calculateDistance(node.getDataPoint().getFeatureValues(),
 					searchPoint.getFeatureValues());
 			kNearestDataPoints.add(node.getDataPoint(), distance);
 			minDistance = kNearestDataPoints.getMaxDistance();
