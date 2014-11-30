@@ -197,11 +197,11 @@ public class BPSOSearch {
 				for (int k = 0; k < dimension; k++) {
 					// Update velocity
 					velocity.set(k,
-							sigmoid(W * velocity.get(k) + C1 * Math.random()
+							W * velocity.get(k) + C1 * Math.random()
 									* (pbest.get(k) - currentPosition.get(k)) + C2 * Math.random()
-									* (gbest.get(k) - currentPosition.get(k))));
+									* (gbest.get(k) - currentPosition.get(k)));
 					// Update position
-					if (velocity.get(k) > Math.random()) {
+					if (sigmoid(velocity.get(k)) > Math.random()) {
 						currentPosition.set(k, 1);
 					} else {
 						currentPosition.set(k, 0);
