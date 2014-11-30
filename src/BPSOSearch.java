@@ -150,7 +150,7 @@ public class BPSOSearch {
 
 			// Calculate fitness of all particles on current positions.
 			ArrayList<Double> fitnessValues = calcFitnessForPositions(currentPositions,
-					"iteration-" + i);
+					"iteration-" + i + "-");
 
 			if (i == 0) {
 				for (int j = 0; j < numParticles; j++) {
@@ -226,9 +226,19 @@ public class BPSOSearch {
 	}
 
 	public static void main(String[] args) {
-		BPSOSearch bs = new BPSOSearch(20, 16, args[0]);
-		bs.BPSO();
-		log.info("exit");
+		if (args.length == 3) {
+			final int numIterations = Integer.parseInt(args[0]);
+			final int numParticles = Integer.parseInt(args[1]);
+			final String filePath = args[2];
+			log.info("numIterations: " + numIterations + ", numParticles: " + numParticles
+					+ ", filePath: " + filePath);
+			BPSOSearch bs = new BPSOSearch(numIterations, numParticles, filePath);
+			bs.BPSO();
+			log.info("exit");
+		} else {
+			System.err.println("Usage:");
+			System.err.println("BPSOSearch <numIterations> <numParticles> <filePath>");
+		}
 	}
 
 	private static class CalcFitnessTask implements Callable<Double> {
