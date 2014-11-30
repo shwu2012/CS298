@@ -48,7 +48,8 @@ public class Rocchio extends AbstractFeatureSelectionEvaluator {
 		int correctClassifiedCount = 0;
 		for (int i = 0; i < numInstances; i++) {
 			DataPoint point = selectedDataSet.get(i);
-			if (point.equals(classify(point, centroidsByClass))) {
+			String correctClassName = point.getClassName();
+			if (correctClassName.equals(classify(point, centroidsByClass))) {
 				correctClassifiedCount++;
 			}
 		}
