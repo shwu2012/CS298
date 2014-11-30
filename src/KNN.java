@@ -56,8 +56,10 @@ public class KNN extends AbstractFeatureSelectionEvaluator {
 				} else if (j == i) {
 					distances.add(0.0);
 				} else {
-					distances.add(MathUtil.calculateDistance(sampleDataPoint.getFeatureValues(),
-							this.selectedDataSet.get(j).getFeatureValues()));
+					distances.add(MathUtil.calculateCosineSimilarity(
+							sampleDataPoint.getFeatureValues(),
+							this.selectedDataSet.get(j).getFeatureValues(),
+							true /* already normalized */));
 				}
 			}
 			Preconditions.checkState(distances.size() == numInstances, "Invaild distances size: "
@@ -139,7 +141,7 @@ public class KNN extends AbstractFeatureSelectionEvaluator {
 		double accuracy = calcAccuracy(numSamples);
 		double result = alpha * accuracy + beta
 				* (((double) (numFeatures - numSelectedFeatures)) / numFeatures);
-		log.info("calcFitness: accuracy=" + accuracy + ", numSelectedFeatures="
+		log.info("KNN::calcFitness: accuracy=" + accuracy + ", numSelectedFeatures="
 				+ numSelectedFeatures + ", fitness=" + result);
 		return result;
 	}

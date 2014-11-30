@@ -263,7 +263,8 @@ public class BPSOSearch {
 			Stopwatch stopwatch = Stopwatch.createStarted();
 
 			// Change the following line for different fitness evaluator.
-			AbstractFeatureSelectionEvaluator evaluator = new KNN(5, position, dataSets);
+			//AbstractFeatureSelectionEvaluator evaluator = new KNN(5, position, dataSets);
+			AbstractFeatureSelectionEvaluator evaluator = new Rocchio(position, dataSets);
 
 			double result = evaluator.calcFitness(ALPHA, BETA, -1 /* no sampling */);
 			stopwatch.stop();

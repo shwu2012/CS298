@@ -1,9 +1,16 @@
 import java.util.ArrayList;
 
 public abstract class AbstractFeatureSelectionEvaluator {
+	/** Number of instances. */ 
 	protected final int numInstances;
+
+	/** Number of original features. */
 	protected final int numFeatures;
+
+	/** Number of filtered data set with only selected features. */
 	protected final ArrayList<DataPoint> selectedDataSet;
+
+	/** Number of selected features. */
 	protected final int numSelectedFeatures;
 
 	public AbstractFeatureSelectionEvaluator(ArrayList<Integer> featureSelectionResult,
@@ -14,7 +21,7 @@ public abstract class AbstractFeatureSelectionEvaluator {
 		this.numSelectedFeatures = this.selectedDataSet.get(0).getFeatureValues().size();
 	}
 
-	protected ArrayList<DataPoint> createSelectedDataSet(ArrayList<Integer> featureSelectionResult,
+	private ArrayList<DataPoint> createSelectedDataSet(ArrayList<Integer> featureSelectionResult,
 			ArrayList<DataPoint> originalDataSet) {
 		ArrayList<DataPoint> result = new ArrayList<>();
 		int numFeatures = featureSelectionResult.size();

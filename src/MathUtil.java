@@ -48,12 +48,7 @@ public final class MathUtil {
 		return unsortedValuesWithIndex.get(count / 2);
 	}
 
-	public static double calculateDistance(List<Double> instance1, List<Double> instance2) {
-		// return calculateEuclideanDistance(instance1, instance2);
-		return calculateCosineSimilarity(instance1, instance2, true);
-	}
-
-	private static double calculateEuclideanDistance(List<Double> instance1, List<Double> instance2) {
+	public static double calculateEuclideanDistance(List<Double> instance1, List<Double> instance2) {
 		Preconditions.checkArgument(instance1.size() == instance2.size());
 		int dimension = instance1.size();
 		double sum = 0.0;
@@ -63,7 +58,7 @@ public final class MathUtil {
 		return Math.sqrt(sum);
 	}
 
-	private static double calculateCosineSimilarity(List<Double> instance1, List<Double> instance2,
+	public static double calculateCosineSimilarity(List<Double> instance1, List<Double> instance2,
 			boolean alreadyNormalized) {
 		Preconditions.checkArgument(instance1.size() == instance2.size());
 		int dimension = instance1.size();
