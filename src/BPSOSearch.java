@@ -260,8 +260,11 @@ public class BPSOSearch {
 		@Override
 		public Double call() throws Exception {
 			Stopwatch stopwatch = Stopwatch.createStarted();
-			double result = new KNN(5, position, dataSets).calcFitness(ALPHA, BETA,
-					KNN.SearchMethod.BRUTE_FORCE, -1);
+
+			// Change the following line for different fitness evaluator.
+			AbstractFeatureSelectionEvaluator evaluator = new KNN(5, position, dataSets);
+
+			double result = evaluator.calcFitness(ALPHA, BETA, -1 /* no sampling */);
 			stopwatch.stop();
 			log.info("CalcFitnessTask #" + taskName + " finished in " + stopwatch);
 			return result;
