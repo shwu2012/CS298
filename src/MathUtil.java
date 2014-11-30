@@ -90,4 +90,18 @@ public final class MathUtil {
 		}
 		return result;
 	}
+
+	public static List<Integer> randomlyPickNumbers(int start, int length, int n) {
+		List<Integer> list = new ArrayList<>(length);
+		for (int i = 0; i < length; i++) {
+			list.add(start + i);
+		}
+		if (n >= length) {
+			return list;
+		}
+		Collections.shuffle(list);
+		List<Integer> result = list.subList(0, n);
+		Collections.sort(result);
+		return result;
+	}
 }

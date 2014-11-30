@@ -2,7 +2,6 @@ import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.BitSet;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
@@ -91,14 +90,18 @@ public class BPSOSearch {
 	private void initialization() {
 		// Initialize the positions
 		for (int i = 0; i < numParticles; i++) {
-			BitSet randomBitSet = MathUtil.randomBits(dimension);
+			//BitSet randomBitSet = MathUtil.randomBits(dimension);
 			ArrayList<Integer> position = new ArrayList<>(dimension);
 			for (int j = 0; j < dimension; j++) {
-				if (randomBitSet.get(j)) {
-					position.add(1);
-				} else {
-					position.add(0);
-				}
+				position.add(0);
+			}
+
+			int numSelectedFeatures = dimension / numParticles * i;
+			log.info("initialization numSelectedFeatures: " + numSelectedFeatures);
+			List<Integer> selectedFeatureIndexes = MathUtil.randomlyPickNumbers(0, dimension,
+					numSelectedFeatures);
+			for (int featureIndex : selectedFeatureIndexes) {
+				position.set(featureIndex, 1);
 			}
 			currentPositions.add(position);
 		}
@@ -212,18 +215,36 @@ public class BPSOSearch {
 			log.info("iteration " + i + " done. " + stopwatch);
 
 			System.out.println("ITERATIONS: " + i);
-			System.out.println("GBEST: " + gbest);
-			System.out.println("FITNESS OF GBEST: " + fitnessGbest);
-			System.out.println("PBESTS: " + pbests);
-			System.out.print("FITNESS OF PBESTS: ");
-			System.out.print(fitnessPbests);
-			System.out.println();
-			System.out.println("CURRENT POSITIONS: " + currentPositions);
-			System.out.print("FITNESS OF LAST ROUND'S CURRENT POSITIONS: ");
-			System.out.print(fitnessValues);
-			System.out.println();
+			System.out.println("GBEST (position): " + gbest);
+			System.out.println("GBEST (#selected features): " + numberOfSelectedFeatures(gbest));
+			System.out.println("GBEST (fitness): " + fitnessGbest);
+
+			for (int j = 0; j < numParticles; j++) {
+				System.out.println("PBEST#" + j + " (position): " + pbests.get(j));
+				System.out.println("PBEST#" + j + " (#selected features): "
+						+ numberOfSelectedFeatures(pbests.get(j)));
+				System.out.println("PBEST#" + j + " (fitness): " + fitnessPbests.get(j));
+			}
+
+			for (int j = 0; j < numParticles; j++) {
+				System.out.println("CURRENT_POSITION#" + j + " (position): "
+						+ currentPositions.get(j));
+				System.out.println("CURRENT_POSITION#" + j + " (#selected features): "
+						+ numberOfSelectedFeatures(currentPositions.get(j)));
+				System.out.println("CURRENT_POSITION#" + j + " (fitness): " + fitnessValues.get(j));
+			}
 			System.out.println();
 		}
+	}
+
+	private static int numberOfSelectedFeatures(List<Integer> position) {
+		int result = 0;
+		for (int value : position) {
+			if (value == 1) {
+				result++;
+			}
+		}
+		return result;
 	}
 
 	public static void main(String[] args) {

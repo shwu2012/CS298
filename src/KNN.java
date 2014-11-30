@@ -22,26 +22,13 @@ public class KNN extends AbstractFeatureSelectionEvaluator {
 		this.numK = numK;
 	}
 
-	private static List<Integer> randomlyPickNumbers(int start, int length, int n) {
-		List<Integer> list = new ArrayList<>(length);
-		for (int i = 0; i < length; i++) {
-			list.add(start + i);
-		}
-		if (length == n) {
-			return list;
-		}
-		Collections.shuffle(list);
-		List<Integer> result = list.subList(0, n);
-		Collections.sort(result);
-		return result;
-	}
-
 	private ArrayList<ArrayList<Double>> createDistanceMatrix(int numSampleInstances) {
 		stopwatch.reset();
 		ArrayList<ArrayList<Double>> distanceMatrix = new ArrayList<ArrayList<Double>>();
 
 		// Get sample instances; those indexes are sorted.
-		List<Integer> sampleIndices = randomlyPickNumbers(0, numInstances, numSampleInstances);
+		List<Integer> sampleIndices = MathUtil.randomlyPickNumbers(0, numInstances,
+				numSampleInstances);
 
 		for (int i = 0; i < numSampleInstances; i++) {
 			stopwatch.start();
