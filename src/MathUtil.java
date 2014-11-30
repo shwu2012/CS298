@@ -1,10 +1,14 @@
+import java.math.BigInteger;
 import java.util.ArrayList;
+import java.util.BitSet;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Random;
 
 import com.google.common.base.Preconditions;
+import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
 import com.google.common.math.DoubleMath;
 
@@ -80,5 +84,15 @@ public final class MathUtil {
 
 	public static DataPoint makeInstance(double x1, double x2) {
 		return new DataPoint(null, Lists.newArrayList(x1, x2));
+	}
+
+	public static BitSet randomBits(int numBits) {
+		BitSet result = new BitSet(numBits);
+		String binaryString = Strings.padStart(new BigInteger(numBits, new Random()).toString(2),
+				numBits, '0');
+		for (int i = 0; i < binaryString.length(); i++) {
+			result.set(i, binaryString.charAt(i) == '1');
+		}
+		return result;
 	}
 }

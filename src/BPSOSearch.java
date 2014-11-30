@@ -2,6 +2,7 @@ import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.BitSet;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
@@ -90,13 +91,13 @@ public class BPSOSearch {
 	private void initialization() {
 		// Initialize the positions
 		for (int i = 0; i < numParticles; i++) {
+			BitSet randomBitSet = MathUtil.randomBits(dimension);
 			ArrayList<Integer> position = new ArrayList<>(dimension);
 			for (int j = 0; j < dimension; j++) {
-				// TODO: maybe should think of a better random method
-				if (Math.random() >= 0.5) {
-					position.add(0);
-				} else {
+				if (randomBitSet.get(j)) {
 					position.add(1);
+				} else {
+					position.add(0);
 				}
 			}
 			currentPositions.add(position);

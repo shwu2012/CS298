@@ -1,3 +1,4 @@
+import java.util.BitSet;
 import java.util.List;
 
 import junit.framework.TestCase;
@@ -19,4 +20,9 @@ public class MathUtilTest extends TestCase {
 		assertEquals(expectedValue, MathUtil.median(values));
 	}
 
+	public void testRandomBits() {
+		int numBits = 23;
+		BitSet bitSet = MathUtil.randomBits(numBits);
+		assertTrue(numBits >= bitSet.length());
+	}
 }
