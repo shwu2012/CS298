@@ -45,8 +45,8 @@ public final class MathUtil {
 	}
 
 	public static double calculateDistance(List<Double> instance1, List<Double> instance2) {
-		//return calculateEuclideanDistance(instance1, instance2);
-		return calculateCosineSimilarity(instance1, instance2);
+		// return calculateEuclideanDistance(instance1, instance2);
+		return calculateCosineSimilarity(instance1, instance2, true);
 	}
 
 	private static double calculateEuclideanDistance(List<Double> instance1, List<Double> instance2) {
@@ -59,14 +59,15 @@ public final class MathUtil {
 		return Math.sqrt(sum);
 	}
 
-	private static double calculateCosineSimilarity(List<Double> instance1, List<Double> instance2) {
+	private static double calculateCosineSimilarity(List<Double> instance1, List<Double> instance2,
+			boolean alreadyNormalized) {
 		Preconditions.checkArgument(instance1.size() == instance2.size());
 		int dimension = instance1.size();
 		double sum = 0.0;
 		for (int i = 0; i < dimension; i++) {
 			sum += (instance1.get(i) * instance2.get(i));
 		}
-		return sum / (vectorLength(instance1) * vectorLength(instance2));
+		return alreadyNormalized ? sum : sum / (vectorLength(instance1) * vectorLength(instance2));
 	}
 
 	private static double vectorLength(List<Double> instance) {

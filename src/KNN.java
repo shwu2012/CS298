@@ -4,16 +4,10 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import java.util.logging.Logger;
 
 import com.google.common.base.Preconditions;
@@ -27,11 +21,8 @@ public class KNN {
 	}
 
 	private static final Logger log = Logger.getLogger(KNN.class.getName());
-	// this would be the same as the number of CPUs
-	private static final int POOL_SIZE = Runtime.getRuntime().availableProcessors();
 
 	private final Stopwatch stopwatch = Stopwatch.createUnstarted();
-	private final ExecutorService pool;
 
 	private final int numK;
 	private final int numInstances;
@@ -45,8 +36,6 @@ public class KNN {
 		this.selectedDataSet = createSelectedDataSet(featureSelectionResult, dataSet);
 		this.numFeatures = dataSet.get(0).getFeatureValues().size();
 		this.numSelectedFeatures = this.selectedDataSet.get(0).getFeatureValues().size();
-		this.pool = Executors.newFixedThreadPool(POOL_SIZE);
-		log.fine("POOL_SIZE=" + POOL_SIZE);
 	}
 
 	private static List<Integer> randomlyPickNumbers(int start, int length, int n) {
@@ -54,17 +43,21 @@ public class KNN {
 		for (int i = 0; i < length; i++) {
 			list.add(start + i);
 		}
+		if (length == n) {
+			return list;
+		}
 		Collections.shuffle(list);
-		return list.subList(0, n);
+		List<Integer> result = list.subList(0, n);
+		Collections.sort(result);
+		return result;
 	}
 
 	private ArrayList<ArrayList<Double>> createDistanceMatrix(int numSampleInstances) {
 		stopwatch.reset();
 		ArrayList<ArrayList<Double>> distanceMatrix = new ArrayList<ArrayList<Double>>();
 
-		// get sample instances
+		// Get sample instances; those indexes are sorted.
 		List<Integer> sampleIndices = randomlyPickNumbers(0, numInstances, numSampleInstances);
-		log.fine("sampleIndices: " + sampleIndices);
 
 		for (int i = 0; i < numSampleInstances; i++) {
 			stopwatch.start();
@@ -73,30 +66,18 @@ public class KNN {
 			DataPoint sampleDataPoint = this.selectedDataSet.get(sampleInstanceIndex);
 			// the distance between a sample instance to every other instances.
 			ArrayList<Double> distances = new ArrayList<>(numInstances);
-			Collection<Callable<Void>> distanceCalculationTasks = new LinkedList<Callable<Void>>();
-
-			final int instancesGroupSize = 1000;
-			for (int j = 0; j < numInstances; j += instancesGroupSize) {
-				int groupSize = instancesGroupSize;
-				if (j + instancesGroupSize > numInstances) {
-					groupSize = numInstances - j;
+			for (int j = 0; j < numInstances; j ++) {
+				if (j < i) {
+					distances.add(distanceMatrix.get(j).get(i));
+				} else if (j == i) {
+					distances.add(0.0);
+				} else {
+					distances.add(MathUtil.calculateDistance(sampleDataPoint.getFeatureValues(),
+							this.selectedDataSet.get(j).getFeatureValues()));
 				}
-				for (int m = 0; m < groupSize; m++) {
-					distances.add(-0.1);
-				}
-				distanceCalculationTasks.add(new CalcEuclideanDistanceTask(sampleDataPoint,
-						selectedDataSet.subList(j, j + groupSize), distances, j, groupSize));
 			}
-
-			try {
-				for (Future<Void> f : pool.invokeAll(distanceCalculationTasks)) {
-					// do real distance calculation for each pair of points
-					f.get();
-				}
-			} catch (InterruptedException | ExecutionException e) {
-				throw new RuntimeException(e);
-			}
-
+			Preconditions.checkState(distances.size() == numInstances, "Invaild distances size: "
+					+ distances.size());
 			distanceMatrix.add(distances);
 			stopwatch.stop();
 			log.fine("filled distance for data point " + i + "/" + numSampleInstances
@@ -111,16 +92,16 @@ public class KNN {
 		ArrayList<DataPoint> result = new ArrayList<>();
 		int numFeatures = featureSelectionResult.size();
 		for (int i = 0; i < numInstances; i++) {
-			DataPoint dataSet = new DataPoint();
-			dataSet.setClassName(originalDataSet.get(i).getClassName());
+			DataPoint dataPoint = new DataPoint();
+			dataPoint.setClassName(originalDataSet.get(i).getClassName());
 			ArrayList<Double> selectedFeatureValues = new ArrayList<>();
 			for (int j = 0; j < numFeatures; j++) {
 				if (featureSelectionResult.get(j) == 1) {
 					selectedFeatureValues.add(originalDataSet.get(i).getFeatureValues().get(j));
 				}
 			}
-			dataSet.setFeatureValues(selectedFeatureValues);
-			result.add(dataSet);
+			dataPoint.setFeatureValues(selectedFeatureValues);
+			result.add(dataPoint);
 		}
 		return result;
 	}
@@ -177,12 +158,16 @@ public class KNN {
 	}
 
 	private double calcAccuracy(int numSampleInstances) {
+		if (numSampleInstances < 0) {
+			numSampleInstances = numInstances;
+		}
 		Preconditions.checkArgument(numSampleInstances <= numInstances,
 				"Invalid number of samples: %s of out %s", numSampleInstances, numInstances);
 		int numCorrectClassification = 0;
 		// Calculate the distance matrix of numSampleInstances rows by
 		// numInstance columns.
 		ArrayList<ArrayList<Double>> distanceMatrix = createDistanceMatrix(numSampleInstances);
+
 		Preconditions.checkArgument(distanceMatrix.size() == numSampleInstances);
 		Preconditions.checkArgument(distanceMatrix.get(0).size() == numInstances);
 		stopwatch.reset().start();
@@ -205,13 +190,17 @@ public class KNN {
 		}
 		stopwatch.stop();
 		double accuracy = ((double) numCorrectClassification) / numSampleInstances;
-		log.info("accuracy = " + accuracy + ", using KNN on " + numSampleInstances
+		log.info("accuracy = " + accuracy + ", using KNN verified on " + numSampleInstances
 				+ " sample instances. " + stopwatch);
 		return accuracy;
 	}
 
-	public double calcFitness(double alpha, double beta, SearchMethod searchMethod) {
-		int numSamples = numInstances / 100;
+	public double calcFitness(double alpha, double beta, SearchMethod searchMethod,
+			int samplingFolders) {
+		int numSamples = -1;
+		if (samplingFolders > 1) {
+			numSamples = numInstances / samplingFolders;
+		}
 		double accuracy = (searchMethod == SearchMethod.KD_TREE) ? calcAccuracyWithKdTree()
 				: calcAccuracy(numSamples);
 		return alpha * accuracy + beta
@@ -248,36 +237,4 @@ public class KNN {
 
 	}
 
-	private static class CalcEuclideanDistanceTask implements Callable<Void> {
-		private final DataPoint sampleInstance;
-		private final List<DataPoint> instances;
-		private final ArrayList<Double> result;
-		private final int resultStartIndex;
-		private final int resultLength;
-
-		public CalcEuclideanDistanceTask(DataPoint sampleInstance, List<DataPoint> instances,
-				ArrayList<Double> result, int resultStartIndex, int resultLength) {
-			Preconditions.checkArgument(!instances.isEmpty());
-			Preconditions.checkArgument(sampleInstance.getFeatureValues().size() == instances
-					.get(0).getFeatureValues().size(),
-					"Euclidean distance must be applied on 2 points with same dimension.");
-			Preconditions.checkArgument(resultStartIndex + resultLength <= result.size(),
-					"Result is too small to have the index. start: %s, length: %s",
-					resultStartIndex, resultLength);
-			this.sampleInstance = sampleInstance;
-			this.instances = instances;
-			this.result = result;
-			this.resultStartIndex = resultStartIndex;
-			this.resultLength = resultLength;
-		}
-
-		@Override
-		public Void call() throws Exception {
-			for (int i = 0; i < resultLength; i++) {
-				result.set(resultStartIndex + i, MathUtil.calculateDistance(
-						sampleInstance.getFeatureValues(), instances.get(i).getFeatureValues()));
-			}
-			return null;
-		}
-	}
 }

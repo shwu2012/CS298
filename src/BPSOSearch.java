@@ -2,12 +2,23 @@ import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.logging.Logger;
 
 import com.google.common.base.Stopwatch;
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 
 public class BPSOSearch {
 	private static final Logger log = Logger.getLogger(BPSOSearch.class.getName());
+
+	// this would be the same as the number of CPUs
+	private static final int POOL_SIZE = Runtime.getRuntime().availableProcessors();
+
 	private final Stopwatch stopwatch = Stopwatch.createUnstarted();
 
 	private static final double W = 1.2;
@@ -16,21 +27,26 @@ public class BPSOSearch {
 	private static final double ALPHA = 0.85;
 	private static final double BETA = 0.15;
 
-	private int numIterations;
-	private int numParticles;
+	private final ExecutorService pool;
+
+	private final int numIterations;
+	private final int numParticles;
 	private int dimension;
 
 	private ArrayList<ArrayList<Integer>> pbests = new ArrayList<ArrayList<Integer>>();
-	private ArrayList<ArrayList<Integer>> positions = new ArrayList<ArrayList<Integer>>();
+	private ArrayList<ArrayList<Integer>> currentPositions = new ArrayList<ArrayList<Integer>>();
 	private ArrayList<ArrayList<Double>> velocities = new ArrayList<ArrayList<Double>>();
 	private ArrayList<Integer> gbest = new ArrayList<Integer>();
 
-	private ArrayList<DataPoint> dataSets;
+	private final ArrayList<DataPoint> dataSets;
 
 	public BPSOSearch(int numIterations, int numParticles, String inputFilePath) {
 		this.numIterations = numIterations;
 		this.numParticles = numParticles;
 		this.dataSets = readFiles(inputFilePath);
+		this.pool = Executors.newFixedThreadPool(POOL_SIZE, new ThreadFactoryBuilder()
+				.setNameFormat("search-worker-%s").build());
+		log.info("POOL_SIZE=" + POOL_SIZE);
 	}
 
 	private ArrayList<DataPoint> readFiles(String inputFilePath) {
@@ -77,13 +93,13 @@ public class BPSOSearch {
 			ArrayList<Integer> position = new ArrayList<>(dimension);
 			for (int j = 0; j < dimension; j++) {
 				// TODO: maybe should think of a better random method
-				if (Math.random() >= 0.50) {
+				if (Math.random() >= 0.5) {
 					position.add(0);
 				} else {
 					position.add(1);
 				}
 			}
-			positions.add(position);
+			currentPositions.add(position);
 		}
 
 		// Initialize the velocities
@@ -95,138 +111,150 @@ public class BPSOSearch {
 			}
 			velocities.add(velocity);
 		}
-
-		// Initialize the pbest to equal to initial positions
-		for (int i = 0; i < numParticles; i++) {
-			// TODO: is this deep copy
-			pbests.add(new ArrayList<Integer>(positions.get(i)));
-		}
-
-		// Initialize the gbest
-		for (int i = 0; i < dimension; i++) {
-			gbest.add(0);
-		}
-	}
-
-	private double fitness(ArrayList<Integer> position) {
-		KNN knn = new KNN(5, position, this.dataSets);
-		return knn.calcFitness(ALPHA, BETA, KNN.SearchMethod.KD_TREE);
-	}
-
-	private String printFitness(ArrayList<Double> fitnesses) {
-		StringBuilder sb = new StringBuilder();
-		for (int i = 0; i < numParticles; i++) {
-			sb.append(fitnesses.get(i));
-			sb.append(", ");
-		}
-		sb.setLength(sb.length() - 2);
-		return sb.toString();
 	}
 
 	private static double sigmoid(double x) {
 		return 1 / (1 + Math.exp(-x));
 	}
 
+	private ArrayList<Double> calcFitnessForPositions(ArrayList<ArrayList<Integer>> positions,
+			String taskNamePrefix) {
+		List<Callable<Double>> calcFitnessTasks = new ArrayList<>();
+		for (int i = 0; i < positions.size(); i++) {
+			ArrayList<Integer> position = positions.get(i);
+			calcFitnessTasks.add(new CalcFitnessTask(dataSets, position, taskNamePrefix + i));
+		}
+		ArrayList<Double> result = new ArrayList<>();
+		try {
+			for (Future<Double> taskFuture : pool.invokeAll(calcFitnessTasks)) {
+
+				result.add(taskFuture.get());
+			}
+		} catch (InterruptedException | ExecutionException e) {
+			e.printStackTrace();
+			throw new RuntimeException(e);
+		}
+		return result;
+	}
+
 	private void BPSO() {
+		// Initialize the positions and velocities.
 		initialization();
 
-		double fitnessGbest = 0.0;
-		ArrayList<Double> fitnessPbests = new ArrayList<Double>(dimension);
-		ArrayList<Double> fitnessPositions = new ArrayList<Double>(dimension);
-
-		// calculate fitnessPbests and fitnessGbest, fill fitnessPositions
-		int bestIndex = -1;
-		for (int i = 0; i < numParticles; i++) {
-			log.info(">>>> initial calculation on fitness Pbests/Gbests start. particle: " + i + "/"
-					+ numParticles);
-			stopwatch.reset().start();
-			double fitnessPbest = fitness(pbests.get(i));
-			fitnessPbests.add(fitnessPbest);
-			fitnessPositions.add(0.0);
-			if (fitnessPbest > fitnessGbest) {
-				bestIndex = i;
-				fitnessGbest = fitnessPbest;
-			}
-			stopwatch.stop();
-			log.info("initial calculation on fitness Pbests/Gbests is done. " + stopwatch);
-		}
-		log.info("initialization done.");
-
-		// set gbest
-		ArrayList<Integer> al = pbests.get(bestIndex);
-		for (int i = 0; i < dimension; i++) {
-			// Because Integer is in the stack, so a new Integer will be created
-			// when doing the following operation.
-			gbest.set(i, al.get(i));
-		}
-
 		log.info(">>>> start PSO iterations");
-		stopwatch.reset();
+		double fitnessGbest = -1.0;
+		ArrayList<Double> fitnessPbests = new ArrayList<Double>();
 		for (int i = 0; i < numIterations; i++) {
 			log.info(">>>> start iteration: " + i + "/" + numIterations);
-			for (int j = 0; j < numParticles; j++) {
-				log.info(">>>> start particle: " + j + "/" + numParticles);
-				stopwatch.start();
+			stopwatch.reset().start();
 
-				ArrayList<Integer> position = positions.get(j);
-				ArrayList<Double> velocity = velocities.get(j);
-				ArrayList<Integer> pbest = pbests.get(j);
-				// Update pbest
-				double fitnessPosition = fitness(position);
-				fitnessPositions.set(j, fitnessPosition);
-				if (fitnessPosition > fitnessPbests.get(j)) {
-					// update pbests, deep copy
-					pbests.set(j, new ArrayList<Integer>(position));
-					// update fitnessPbests
-					fitnessPbests.set(j, fitnessPosition);
-					// update gbest if necessary
-					if (fitnessPosition > fitnessGbest) {
-						for (int k = 0; k < dimension; k++) {
-							// Because Integer is in the stack, so a new Integer
-							// will be created when doing the following
-							// operation.
-							gbest.set(k, position.get(k));
-						}
-						fitnessGbest = fitnessPosition;
+			// Calculate fitness of all particles on current positions.
+			ArrayList<Double> fitnessValues = calcFitnessForPositions(currentPositions,
+					"iteration-" + i);
+
+			if (i == 0) {
+				for (int j = 0; j < numParticles; j++) {
+					ArrayList<Integer> currentPosition = currentPositions.get(j);
+					double fitnessValue = fitnessValues.get(j);
+
+					// Initialize pbests.
+					pbests.add(new ArrayList<Integer>(currentPosition));
+					// Initialize fitnessPbests.
+					fitnessPbests.add(fitnessValues.get(j));
+					// Initialize gbest.
+					if (fitnessValue > fitnessGbest) {
+						gbest = new ArrayList<>(currentPosition);
+						fitnessGbest = fitnessValue;
 					}
 				}
+			} else {
+				for (int j = 0; j < numParticles; j++) {
+					ArrayList<Integer> currentPosition = currentPositions.get(j);
+					double fitnessValue = fitnessValues.get(j);
+
+					// Found a better position?
+					if (fitnessValue > fitnessPbests.get(j)) {
+						// Update pbests.
+						pbests.set(j, new ArrayList<Integer>(currentPosition));
+						// Update fitnessPbests.
+						fitnessPbests.set(j, fitnessValue);
+						// Update gbest.
+						if (fitnessValue > fitnessGbest) {
+							gbest = new ArrayList<>(currentPosition);
+							fitnessGbest = fitnessValue;
+						}
+					}
+				}
+			}
+
+			// Update the positions and velocities.
+			for (int j = 0; j < numParticles; j++) {
+				ArrayList<Integer> currentPosition = currentPositions.get(j);
+				ArrayList<Integer> pbest = pbests.get(j);
+				ArrayList<Double> velocity = velocities.get(j);
 
 				for (int k = 0; k < dimension; k++) {
 					// Update velocity
 					velocity.set(k,
 							sigmoid(W * velocity.get(k) + C1 * Math.random()
-									* (pbest.get(k) - position.get(k)) + C2 * Math.random()
-									* (gbest.get(k) - position.get(k))));
+									* (pbest.get(k) - currentPosition.get(k)) + C2 * Math.random()
+									* (gbest.get(k) - currentPosition.get(k))));
 					// Update position
 					if (velocity.get(k) > Math.random()) {
-						position.set(k, 1);
+						currentPosition.set(k, 1);
 					} else {
-						position.set(k, 0);
+						currentPosition.set(k, 0);
 					}
 				}
-
-				stopwatch.stop();
-				log.info("iteration " + i + " of particle " + j + " done. " + stopwatch);
 			}
+			stopwatch.stop();
+			log.info("iteration " + i + " done. " + stopwatch);
 
 			System.out.println("ITERATIONS: " + i);
 			System.out.println("GBEST: " + gbest);
 			System.out.println("FITNESS OF GBEST: " + fitnessGbest);
 			System.out.println("PBESTS: " + pbests);
 			System.out.print("FITNESS OF PBESTS: ");
-			System.out.print(printFitness(fitnessPbests));
+			System.out.print(fitnessPbests);
 			System.out.println();
-			System.out.println("CURRENT POSITIONS: " + positions);
+			System.out.println("CURRENT POSITIONS: " + currentPositions);
 			System.out.print("FITNESS OF LAST ROUND'S CURRENT POSITIONS: ");
-			System.out.print(printFitness(fitnessPositions));
+			System.out.print(fitnessValues);
 			System.out.println();
 			System.out.println();
 		}
 	}
 
 	public static void main(String[] args) {
-		BPSOSearch bs = new BPSOSearch(20, 10, args[0]);
+		BPSOSearch bs = new BPSOSearch(20, 16, args[0]);
 		bs.BPSO();
 		log.info("exit");
+	}
+
+	private static class CalcFitnessTask implements Callable<Double> {
+		private static final Logger log = Logger.getLogger(CalcFitnessTask.class.getName());
+
+		private final ArrayList<Integer> position;
+
+		private final ArrayList<DataPoint> dataSets;
+
+		private final String taskName;
+
+		public CalcFitnessTask(ArrayList<DataPoint> dataSets, ArrayList<Integer> position,
+				String taskName) {
+			this.dataSets = dataSets;
+			this.position = position;
+			this.taskName = taskName;
+		}
+
+		@Override
+		public Double call() throws Exception {
+			Stopwatch stopwatch = Stopwatch.createStarted();
+			double result = new KNN(5, position, dataSets).calcFitness(ALPHA, BETA,
+					KNN.SearchMethod.BRUTE_FORCE, -1);
+			stopwatch.stop();
+			log.info("CalcFitnessTask #" + taskName + " finished in " + stopwatch);
+			return result;
+		}
 	}
 }
