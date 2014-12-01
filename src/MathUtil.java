@@ -66,7 +66,10 @@ public final class MathUtil {
 		for (int i = 0; i < dimension; i++) {
 			sum += (instance1.get(i) * instance2.get(i));
 		}
-		return alreadyNormalized ? sum : sum / (vectorLength(instance1) * vectorLength(instance2));
+		if (alreadyNormalized) {
+			return 1.0 - sum;
+		}
+		return 1.0 - sum / (vectorLength(instance1) * vectorLength(instance2));
 	}
 
 	private static double vectorLength(List<Double> instance) {
