@@ -7,9 +7,33 @@ import java.util.ArrayList;
 import com.google.common.base.Preconditions;
 
 public class FeatureSelectedDocGenerator {
-	public FeatureSelectedDocGenerator(String inputFilePath, String outputFilePath, ArrayList<Integer> selectedFeatures){
+	public FeatureSelectedDocGenerator(String inputFilePath, String outputFilePath, String selectedFeaturesFilePath){
 		BufferedReader in = null;
 		PrintWriter out = null;
+
+		ArrayList<Integer> selectedFeatures = new ArrayList<Integer>();
+
+		try {
+			in = new BufferedReader(new FileReader(selectedFeaturesFilePath));
+			String line = null;
+			while ((line = in.readLine()) != null) {
+				String[] bits = line.split(",");
+				for(int i = 0; i < bits.length; i++){
+					selectedFeatures.add(Integer.parseInt(bits[i]));
+				}
+			}
+		} catch (IOException x) {
+			x.printStackTrace();
+			System.err.format("IOException: %s%n", x);
+		} finally {
+			try {
+				if (in != null) {
+					in.close();
+				}
+			} catch (IOException ex) {
+				ex.printStackTrace();
+			}
+		}
 		
 		try {
 			in = new BufferedReader(new FileReader(inputFilePath));
@@ -48,15 +72,6 @@ public class FeatureSelectedDocGenerator {
 	}
 		
 	public static void main(String[] args){
-		ArrayList<Integer> al = new ArrayList<>();
-		al.add(0);
-		al.add(1);
-		al.add(0);
-		al.add(1);
-		al.add(0);
-		al.add(1);
-		al.add(1);
-		al.add(1);
-		new FeatureSelectedDocGenerator(args[0], args[1], al);
+		new FeatureSelectedDocGenerator(args[0], args[1], args[2]);
 	}
 }
