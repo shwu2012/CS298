@@ -6,6 +6,7 @@ import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 
 import com.google.common.base.Preconditions;
@@ -114,6 +115,8 @@ public class TfidfCalculator {
 		PrintWriter out = null;
 		try {
 			out = new PrintWriter(outputFilePath);
+			// print out terms as feature names
+			printTerms(termIndexMapping, out);
 
 			// print out the vector space model
 			for (int i = 0; i < numDoc; i++) {
@@ -140,6 +143,18 @@ public class TfidfCalculator {
 			out.flush();
 			out.close();
 		}
+	}
+
+	private static void printTerms(List<String> termIndexMapping, PrintWriter out) {
+		StringBuilder sb = new StringBuilder();
+		sb.append("class_unique");
+		sb.append(",");
+		for (int i = 0; i < termIndexMapping.size(); i++) {
+			sb.append(termIndexMapping.get(i));
+			sb.append(",");
+		}
+		sb.setLength(sb.length() - 1);
+		out.println(sb.toString());
 	}
 
 	private static String toTextLine(DataPoint instance) {
