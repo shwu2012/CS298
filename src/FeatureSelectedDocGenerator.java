@@ -49,7 +49,7 @@ public class FeatureSelectedDocGenerator {
 					if(selectedFeatures.get(i) == 1){
 						sb.append(",");
 						sb.append(terms[i+1]);	
-					}					
+					}
 				}
 				out.println(sb.toString());
 			}
