@@ -46,7 +46,7 @@ public class MutualInfoResultExtractor {
 			out = new PrintWriter(outputFilePath);
 			StringBuilder sb = null;
 			String line = null;
-			ArrayList<Double> featureValues = new ArrayList<>();
+			ArrayList<Double> featureValues = null;
 			// print out the names of selected features
 			String[] featureNames = in.readLine().split(",");
 			sb = new StringBuilder();
@@ -63,6 +63,7 @@ public class MutualInfoResultExtractor {
 				sb.append(terms[0]);
 				int size = selectedFeatureIndex.size();				
 				if(isNormalizeVector){
+					featureValues = new ArrayList<>();
 					for(int i = 0; i < size; i++){	
 						featureValues.add(Double.parseDouble(terms[selectedFeatureIndex.get(i)]));		
 					}
@@ -106,7 +107,7 @@ public class MutualInfoResultExtractor {
 		for (int i = 0; i < values.size(); i++) {
 			values.set(i, values.get(i) / length);
 		}
-	}	
+	}
 	
 	// args[0] is the doc excerpted from Weka's Information Gain feature selection output, see example doc mir.txt
 	// args[1] is the doc generated from TfidfCalculator without normalization
