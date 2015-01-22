@@ -60,6 +60,8 @@ public class BPSOSearch {
 			String[] terms = null;
 			DataPoint dataPoint = null;
 			ArrayList<Double> featureValues = null;
+			// read the first line which is feature names in order to get rid of it
+			in.readLine();
 			while ((line = in.readLine()) != null) {
 				terms = line.split(",");
 				dataPoint = new DataPoint();
