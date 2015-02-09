@@ -112,7 +112,9 @@ public class MutualInfoResultExtractor {
 	// args[0] is the doc excerpted from Weka's Information Gain feature selection output, see example doc mir.txt
 	// args[1] is the doc generated from TfidfCalculator without normalization
 	// args[2] is the output file name
-	// args[4] is the argument indicated whether to do normalization or not
+	// args[3] is the argument indicated whether to do normalization or not
+	// Remember, a normalized version is needed whether or not the argument 4 is available, because we always need
+	// an un-normalized version after the BPSO
 	public static void main(String[] args){
 		MutualInfoResultExtractor mir = new MutualInfoResultExtractor(args[0]);
 		boolean isNormalizeVector = args.length == 4;

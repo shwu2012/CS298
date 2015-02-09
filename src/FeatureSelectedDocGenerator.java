@@ -17,7 +17,7 @@ public class FeatureSelectedDocGenerator {
 			in = new BufferedReader(new FileReader(selectedFeaturesFilePath));
 			String line = null;
 			while ((line = in.readLine()) != null) {
-				String[] bits = line.split(",");
+				String[] bits = line.split(", ");
 				for(int i = 0; i < bits.length; i++){
 					selectedFeatures.add(Integer.parseInt(bits[i]));
 				}
@@ -70,7 +70,10 @@ public class FeatureSelectedDocGenerator {
 			}
 		}
 	}
-		
+
+	// 1. args[0] is the file that is generated according to the weka mutual information output, and was NOT normalized
+	// 2. args[1] is the output file name
+	// 3. args[2] is the file that is generated from the PSO
 	public static void main(String[] args){
 		new FeatureSelectedDocGenerator(args[0], args[1], args[2]);
 	}

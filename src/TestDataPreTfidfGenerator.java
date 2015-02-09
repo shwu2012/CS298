@@ -4,9 +4,16 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.HashMap;
 
-/*This generator keeps only the selected features in the raw test data by doing the following two steps:
- * 1. read the feature names of the training data with only selected features. (The file which is ready to put into weka to run the model)
- * 2. read the raw test file to keep only the selected features. (after step 2, this test file will be used in the tfidf generator to generate the test file to put into weka )*/
+/**
+ * This generator keeps only the selected features in the raw test data by doing
+ * the following two steps:
+ * <ol>
+ * <li>read the feature names of the training data with only selected features.
+ * (The file which is ready to put into weka to run the model)
+ * <li>read the raw test file to keep only the selected features. (after step 2,
+ * this test file will be used in the tfidf generator to generate the test file
+ * to put into weka )
+ */
 public class TestDataPreTfidfGenerator {
 	public TestDataPreTfidfGenerator(String inputTrainingDataFilePath, String inputTestDataFilePath, String outputFilePath){
 		BufferedReader in = null;
